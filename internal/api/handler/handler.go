@@ -71,6 +71,7 @@ import (
 	"github.com/warmbly/warmbly/internal/app/worker"
 	"github.com/warmbly/warmbly/internal/pkg/generation"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/warmbly/warmbly/internal/infrastructure/encryptedkeys"
 	"github.com/warmbly/warmbly/internal/infrastructure/kms"
 	"github.com/warmbly/warmbly/internal/infrastructure/pubsub"
@@ -82,6 +83,7 @@ import (
 )
 
 type Handler struct {
+	DB             *pgxpool.Pool
 	AuthService    auth.AuthService
 	TokenService   token.TokenService
 	PasskeyService passkey.Service

@@ -81,12 +81,7 @@ func (s *tasksService) HandleEmailTask(task *proto.ProcessTask) *errx.Error {
 	if account == nil {
 		return errx.ErrNotFound
 	}
-	// A mailbox enrolled in Warmbly Cloud is warmed there; the local chain ends here.
-	if s.cloudLink != nil && s.cloudLink.IsEnrolled(ctx, account.ID) {
-		_ = s.taskRepo.UpdateTaskStatus(ctx, taskID, "cancelled")
-		executionStatus = "skipped_cloud_warmup"
-		return nil
-	}
+	// Warmup runs locally peer-to-peer for all mailboxes.
 	// Keep the warmup chain alive while the mailbox is actively warming OR
 	// while it backs a live campaign (the low-volume health-check lane). Once
 	// neither holds, the chain is allowed to wind down.

@@ -618,6 +618,10 @@ services:
       # The other error-tracking backend. Unset means the dashboard contacts no
       # Sentry host. Point it at your own project to collect browser errors.
       WARMBLY_SENTRY_DSN: ${WARMBLY_SENTRY_DSN:-}
+    volumes:
+      - ./web/dark-mode.css:/usr/share/nginx/html/dark-mode.css:ro
+      - ./web/dark-mode.js:/usr/share/nginx/html/dark-mode.js:ro
+      - ./web/index.html.patched:/usr/share/nginx/html/index.html:ro
     depends_on:
       backend: { condition: service_healthy }
 

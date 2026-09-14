@@ -322,8 +322,8 @@ func (s *service) Disconnect(ctx context.Context) *errx.Error {
 }
 
 func (s *service) IsEnrolled(ctx context.Context, accountID uuid.UUID) bool {
-	ok, err := s.repo.IsEnrolled(ctx, accountID)
-	return err == nil && ok
+	// Self-host runs local peer-to-peer warmup for all mailboxes
+	return false
 }
 
 func (s *service) ListMailboxes(ctx context.Context, orgID uuid.UUID) ([]models.CloudLinkMailboxRow, *errx.Error) {

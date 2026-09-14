@@ -26,6 +26,7 @@ import { CloudIcon } from "lucide-react";
 import type { CloudLinkMailboxRow } from "@/lib/api/models/app/cloudlink/CloudLink";
 import buildError from "@/lib/helper/buildError";
 import type { AppError } from "@/lib/api/client/normalizeError";
+import WarmupTelemetryButton from "@/components/app/emails/WarmupTelemetryButton";
 import BulkWarmupDialog from "@/components/app/emails/BulkWarmupDialog";
 import BulkTagPopover from "@/components/app/emails/BulkTagPopover";
 import type Tag from "@/lib/api/models/app/Tag";
@@ -280,6 +281,7 @@ export default function AddressesPage() {
             </StatStrip>
 
             <SectionBar label="Mailboxes" count={emailsData.emails?.length ?? 0}>
+                <WarmupTelemetryButton />
                 <SearchInput
                     value={query}
                     onChange={setQuery}

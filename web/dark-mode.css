@@ -1,0 +1,524 @@
+/* ==========================================================================
+   Warmbly Dark Theme - Modern Polished Dark Mode
+   Strictly scoped to .warmbly-dark / [data-theme="dark"] / .dark.
+   Light mode remains 100% untouched.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Base & Shell Foundation
+   Surface 0: #0b0f19 (Rich midnight canvas, never harsh pitch black)
+   -------------------------------------------------------------------------- */
+html.warmbly-dark,
+body.warmbly-dark,
+.warmbly-dark #root {
+  background-color: #0b0f19 !important;
+  color: #f1f5f9 !important;
+  color-scheme: dark;
+}
+
+/* Smooth transition when toggling modes */
+html.warmbly-theme-transition,
+html.warmbly-theme-transition *,
+html.warmbly-theme-transition *::before,
+html.warmbly-theme-transition *::after {
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease !important;
+}
+
+/* Modern Dark Scrollbars */
+.warmbly-dark *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.warmbly-dark *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.warmbly-dark *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+}
+.warmbly-dark *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+/* --------------------------------------------------------------------------
+   2. Surface Hierarchy
+   - Surface 1 (#111827 / #0f172a): Main layout cards, sidebar, table containers
+   - Surface 2 (#162032 / #182236): Interactive rows, stat cells, inputs
+   - Surface 3 (#1f2c42 / #22334e): Elevated active states, popovers, dialogs
+   -------------------------------------------------------------------------- */
+
+/* Surface 1: Default white backgrounds become clean dark cards */
+.warmbly-dark .bg-white,
+.warmbly-dark [class*="bg-white"],
+.warmbly-dark .bg-white\/80,
+.warmbly-dark [class*="bg-white/80"] {
+  background-color: #111827 !important;
+  color: #f1f5f9 !important;
+}
+
+/* Canvas level: slate-50 / gray-50 */
+.warmbly-dark .bg-slate-50,
+.warmbly-dark .bg-gray-50,
+.warmbly-dark [class*="bg-slate-50"],
+.warmbly-dark [class*="bg-gray-50"],
+.warmbly-dark .bg-slate-50\/60,
+.warmbly-dark [class*="bg-slate-50/60"] {
+  background-color: #0b0f19 !important;
+}
+
+/* Surface 2: Elevated chips, subtle backgrounds */
+.warmbly-dark .bg-slate-100,
+.warmbly-dark .bg-gray-100,
+.warmbly-dark [class*="bg-slate-100"],
+.warmbly-dark [class*="bg-gray-100"] {
+  background-color: #162032 !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. UNIVERSAL HOVER RULE (NEVER WHITE ON HOVER IN DARK MODE)
+   Fixes the issue where hovering over items turns them white and hides text
+   -------------------------------------------------------------------------- */
+.warmbly-dark [class*="hover:bg-slate"]:hover,
+.warmbly-dark [class*="hover:bg-gray"]:hover,
+.warmbly-dark [class*="hover:bg-white"]:hover,
+.warmbly-dark [class*="hover:bg-zinc"]:hover,
+.warmbly-dark [class*="hover:bg-neutral"]:hover,
+.warmbly-dark [class*="hover:bg-sky-50"]:hover,
+.warmbly-dark [class*="hover:bg-sky-100"]:hover,
+.warmbly-dark nav button:hover,
+.warmbly-dark nav [role="button"]:hover,
+.warmbly-dark aside button:hover,
+.warmbly-dark aside [role="button"]:hover,
+.warmbly-dark .cursor-pointer:hover {
+  background-color: #1a2538 !important;
+  color: #f8fafc !important;
+}
+
+/* Ensure child text and spans stay visible on hover */
+.warmbly-dark [class*="hover:bg-slate"]:hover *,
+.warmbly-dark [class*="hover:bg-gray"]:hover *,
+.warmbly-dark [class*="hover:bg-white"]:hover *,
+.warmbly-dark nav button:hover *,
+.warmbly-dark nav [role="button"]:hover * {
+  color: #f8fafc !important;
+}
+
+.warmbly-dark [class*="hover:bg-slate"]:hover svg,
+.warmbly-dark [class*="hover:bg-gray"]:hover svg,
+.warmbly-dark nav button:hover svg,
+.warmbly-dark nav [role="button"]:hover svg {
+  color: #38bdf8 !important;
+}
+
+/* --------------------------------------------------------------------------
+   4. Borders & Dividers
+   Clean, visible hairlines with low-opacity white (8% - 14%)
+   -------------------------------------------------------------------------- */
+.warmbly-dark .border-slate-100,
+.warmbly-dark .border-slate-200,
+.warmbly-dark .border-slate-200\/60,
+.warmbly-dark .border-slate-200\/70,
+.warmbly-dark .border-slate-200\/80,
+.warmbly-dark [class*="border-slate-100"],
+.warmbly-dark [class*="border-slate-200"],
+.warmbly-dark [class*="divide-slate-100"],
+.warmbly-dark [class*="divide-slate-200"],
+.warmbly-dark [class*="border-sky-200"],
+.warmbly-dark [class*="border-sky-100"] {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.warmbly-dark .border-slate-300,
+.warmbly-dark [class*="border-slate-300"] {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. High-Contrast, Accessible Typography
+   Headings: #f8fafc (95% brightness, off-white)
+   Body:     #e2e8f0 / #cbd5e1 (80-85% brightness)
+   Muted:    #94a3b8 (65% brightness - easily readable, never squinting)
+   -------------------------------------------------------------------------- */
+.warmbly-dark .text-slate-900,
+.warmbly-dark .text-gray-900,
+.warmbly-dark [class*="text-slate-900"],
+.warmbly-dark [class*="text-gray-900"] {
+  color: #f8fafc !important;
+}
+
+.warmbly-dark .text-slate-800,
+.warmbly-dark [class*="text-slate-800"] {
+  color: #f1f5f9 !important;
+}
+
+.warmbly-dark .text-slate-700,
+.warmbly-dark [class*="text-slate-700"] {
+  color: #e2e8f0 !important;
+}
+
+/* Secondary labels & stat subtitles */
+.warmbly-dark .text-slate-600,
+.warmbly-dark [class*="text-slate-600"],
+.warmbly-dark .text-slate-500,
+.warmbly-dark [class*="text-slate-500"],
+.warmbly-dark .text-slate-400,
+.warmbly-dark [class*="text-slate-400"] {
+  color: #94a3b8 !important;
+}
+
+.warmbly-dark .text-slate-300,
+.warmbly-dark [class*="text-slate-300"] {
+  color: #64748b !important;
+}
+
+/* --------------------------------------------------------------------------
+   6. Active & Selected State Fixes (Campaigns, Sidebar, Unibox)
+   -------------------------------------------------------------------------- */
+
+/* Sidebar Active Navigation Row (e.g. Campaigns, Accounts, Inbox) */
+.warmbly-dark .bg-slate-200,
+.warmbly-dark .bg-slate-200\/70,
+.warmbly-dark .bg-slate-200\/80,
+.warmbly-dark [class*="bg-slate-200/70"],
+.warmbly-dark [class*="bg-slate-200/80"],
+.warmbly-dark [class*="bg-slate-200/60"] {
+  background-color: rgba(14, 165, 233, 0.15) !important;
+  color: #38bdf8 !important;
+}
+
+/* Ensure text inside active nav items is crisp and bright */
+.warmbly-dark .bg-slate-200\/70 .text-slate-900,
+.warmbly-dark .bg-slate-200\/70 [class*="text-slate-900"],
+.warmbly-dark .bg-slate-200\/70 span,
+.warmbly-dark .bg-slate-200\/80 .text-slate-900,
+.warmbly-dark .bg-slate-200\/80 [class*="text-slate-900"],
+.warmbly-dark .bg-slate-200\/80 span {
+  color: #f8fafc !important;
+}
+
+.warmbly-dark .bg-slate-200\/70 svg,
+.warmbly-dark .bg-slate-200\/70 .text-slate-700,
+.warmbly-dark .bg-slate-200\/80 svg,
+.warmbly-dark .bg-slate-200\/80 .text-slate-700 {
+  color: #38bdf8 !important;
+}
+
+/* Unibox ScopeRail: Active View / Folder Pill (e.g. "All", "Unread") */
+.warmbly-dark .bg-sky-100,
+.warmbly-dark [class*="bg-sky-100"] {
+  background-color: rgba(14, 165, 233, 0.18) !important;
+  color: #38bdf8 !important;
+}
+
+.warmbly-dark .bg-sky-100 .text-sky-900,
+.warmbly-dark .text-sky-900,
+.warmbly-dark [class*="text-sky-900"] {
+  color: #38bdf8 !important;
+}
+
+/* --------------------------------------------------------------------------
+   7. Warmup Settings & Cloud Cards (FIX FOR WHITE WARMUP CARD)
+   Matches CloudWarmupCard (bg-sky-50/50), health check (bg-sky-50/70), etc.
+   -------------------------------------------------------------------------- */
+.warmbly-dark [class*="bg-sky-50"],
+.warmbly-dark [class*="bg-sky-50/"],
+.warmbly-dark .bg-sky-50 {
+  background-color: rgba(14, 165, 233, 0.12) !important;
+  border-color: rgba(14, 165, 233, 0.25) !important;
+  color: #f8fafc !important;
+}
+
+.warmbly-dark [class*="bg-sky-50"] .text-slate-900,
+.warmbly-dark [class*="bg-sky-50"] [class*="text-slate-900"],
+.warmbly-dark [class*="bg-sky-50"] .text-sky-900,
+.warmbly-dark [class*="bg-sky-50"] [class*="text-sky-900"] {
+  color: #f8fafc !important;
+}
+
+.warmbly-dark [class*="bg-sky-50"] .text-slate-500,
+.warmbly-dark [class*="bg-sky-50"] [class*="text-slate-500"] {
+  color: #94a3b8 !important;
+}
+
+.warmbly-dark [class*="bg-sky-50"] .text-slate-600,
+.warmbly-dark [class*="bg-sky-50"] [class*="text-slate-600"] {
+  color: #cbd5e1 !important;
+}
+
+/* Selected Thread Item in Unibox (bg-sky-50/80) */
+.warmbly-dark button[class*="bg-sky-50"] {
+  background-color: #162236 !important;
+  border-left: 3px solid #38bdf8 !important;
+}
+
+.warmbly-dark .text-sky-700,
+.warmbly-dark .text-sky-600,
+.warmbly-dark [class*="text-sky-700"],
+.warmbly-dark [class*="text-sky-600"] {
+  color: #38bdf8 !important;
+}
+
+/* --------------------------------------------------------------------------
+   8. Sidebar, Shell Chrome & Top Header
+   -------------------------------------------------------------------------- */
+.warmbly-dark aside,
+.warmbly-dark [class*="w-64"] {
+  background-color: #0d131f !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.warmbly-dark .h-14 {
+  background-color: #0d131f !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Live Capacity & Send Trend Panel in Sidebar */
+.warmbly-dark aside a.group[class*="bg-white"] {
+  background-color: #141d2e !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.warmbly-dark aside a.group[class*="bg-white"]:hover {
+  background-color: #182337 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* --------------------------------------------------------------------------
+   9. Campaigns Columns & StatStrip Pattern
+   -------------------------------------------------------------------------- */
+.warmbly-dark .grid.border-b.border-slate-200.shrink-0.bg-white,
+.warmbly-dark [class*="grid border-b"][class*="bg-white"] {
+  background-color: #0f172a !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.warmbly-dark .border-r.border-slate-200,
+.warmbly-dark [class*="border-r border-slate-200"] {
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Stat columns text */
+.warmbly-dark [class*="uppercase tracking-[0.14em]"] {
+  color: #94a3b8 !important;
+}
+
+.warmbly-dark [class*="text-[26px]"] {
+  color: #f8fafc !important;
+  font-weight: 300;
+}
+
+/* Stat strip hover */
+.warmbly-dark .group.px-5.py-3:hover,
+.warmbly-dark .group.px-5.py-4:hover {
+  background-color: #162032 !important;
+}
+
+/* Section Bar (All campaigns count + search + folder selectors) */
+.warmbly-dark .h-10.px-5.border-b.border-slate-200,
+.warmbly-dark [class*="h-10 px-5 border-b"] {
+  background-color: #0d131f !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Campaign List Rows */
+.warmbly-dark .divide-y.divide-slate-200\/60 > a,
+.warmbly-dark .divide-y.divide-slate-200\/60 > div {
+  background-color: #111827 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.warmbly-dark .divide-y.divide-slate-200\/60 > a:hover {
+  background-color: #162236 !important;
+}
+
+/* --------------------------------------------------------------------------
+   10. Email Reading Pane & Iframe Fix (NO MORE WHITE PATCHES)
+   -------------------------------------------------------------------------- */
+.warmbly-dark .flex-1.flex.flex-col.min-w-0.bg-white,
+.warmbly-dark [class*="flex-1 flex flex-col min-w-0 bg-white"] {
+  background-color: #0d131f !important;
+}
+
+.warmbly-dark .h-12.px-3.border-b.border-slate-200,
+.warmbly-dark [class*="h-12 px-3 sm:px-5 border-b"] {
+  background-color: #0d131f !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Email message bubble card */
+.warmbly-dark article.group {
+  background-color: #0d131f !important;
+}
+
+/* Sandboxed Email Iframe: force dark scheme & dark background */
+.warmbly-dark iframe {
+  color-scheme: dark !important;
+  background-color: #0d131f !important;
+  border: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   11. Tables, Data Grids & Contacts
+   -------------------------------------------------------------------------- */
+.warmbly-dark table,
+.warmbly-dark thead,
+.warmbly-dark thead th,
+.warmbly-dark tbody tr {
+  background-color: #0e1526 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #cbd5e1 !important;
+}
+
+.warmbly-dark tbody tr:hover {
+  background-color: #162033 !important;
+}
+
+/* --------------------------------------------------------------------------
+   12. Modals, Popovers, Drawers, Dropdowns & Tooltips
+   Surface 3 with soft depth shadow
+   -------------------------------------------------------------------------- */
+.warmbly-dark [role="dialog"],
+.warmbly-dark [role="menu"],
+.warmbly-dark [data-state="open"],
+.warmbly-dark [class*="shadow-lg"],
+.warmbly-dark [class*="shadow-xl"],
+.warmbly-dark [class*="shadow-2xl"],
+.warmbly-dark [class*="bg-popover"],
+.warmbly-dark .bg-popover,
+.warmbly-dark [class*="shadow-[0_4px_12px"] {
+  background-color: #141d2f !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.65), 0 4px 12px -2px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Dropdown Menu Items */
+.warmbly-dark [role="menuitem"]:hover,
+.warmbly-dark [role="option"]:hover,
+.warmbly-dark button.cursor-pointer:hover {
+  background-color: rgba(14, 165, 233, 0.12) !important;
+}
+
+/* --------------------------------------------------------------------------
+   13. Inputs, Search Bars, NumberInputs & Select Buttons
+   -------------------------------------------------------------------------- */
+.warmbly-dark input:not([type="checkbox"]):not([type="radio"]),
+.warmbly-dark select,
+.warmbly-dark textarea {
+  background-color: #141c2c !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f8fafc !important;
+}
+
+.warmbly-dark input:focus,
+.warmbly-dark select:focus,
+.warmbly-dark textarea:focus {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 1px #38bdf8 !important;
+}
+
+.warmbly-dark input::placeholder,
+.warmbly-dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* NumberInput container in Ramp Configuration */
+.warmbly-dark .relative.inline-flex.items-center.h-7,
+.warmbly-dark .relative.inline-flex.items-center.h-9,
+.warmbly-dark [class*="NumberInput"] {
+  background-color: #141c2c !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f8fafc !important;
+}
+
+.warmbly-dark input[type="number"] {
+  background-color: transparent !important;
+  color: #f8fafc !important;
+}
+
+/* Search bar button and kbd badge */
+.warmbly-dark kbd {
+  background-color: #1e293b !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #94a3b8 !important;
+}
+
+/* SelectButton trigger (popover menus) */
+.warmbly-dark button.bg-white,
+.warmbly-dark button[class*="bg-white"] {
+  background-color: #141c2c !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f1f5f9 !important;
+}
+
+.warmbly-dark button.bg-white:hover,
+.warmbly-dark button[class*="bg-white"]:hover {
+  background-color: #1a2538 !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  color: #f8fafc !important;
+}
+
+/* --------------------------------------------------------------------------
+   14. Status Pills & Badges (Emerald, Amber, Rose, Sky)
+   -------------------------------------------------------------------------- */
+.warmbly-dark .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+
+.warmbly-dark .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.25) !important;
+}
+
+.warmbly-dark .bg-rose-50,
+.warmbly-dark .bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+
+/* Primary Sky Button: calibrated saturation for dark backgrounds */
+.warmbly-dark .bg-sky-600 {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+.warmbly-dark .bg-sky-600:hover {
+  background-color: #0369a1 !important;
+}
+
+/* --------------------------------------------------------------------------
+   15. Header Dark Mode Toggle Button
+   -------------------------------------------------------------------------- */
+.warmbly-theme-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  color: #64748b;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.warmbly-theme-btn:hover {
+  color: #0ea5e9;
+  background-color: rgba(14, 165, 233, 0.1);
+}
+
+.warmbly-dark .warmbly-theme-btn {
+  color: #94a3b8;
+}
+
+.warmbly-dark .warmbly-theme-btn:hover {
+  color: #38bdf8;
+  background-color: rgba(56, 189, 248, 0.15);
+}

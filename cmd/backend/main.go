@@ -1852,6 +1852,7 @@ func main() {
 	})
 
 	h := &handler.Handler{
+		DB:                    primaryDB.Pool,
 		AuthService:           authService,
 		ExternalAuthProviders: externalAuthProviders,
 

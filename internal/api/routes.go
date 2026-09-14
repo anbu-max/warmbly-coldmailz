@@ -452,6 +452,8 @@ func Run(
 				emails.PATCH("/tags", m.RequireAccess(models.PermManageEmails, models.APIPermWriteEmails), h.BulkTagEmails)
 				// How many mailboxes the workspace holds and may hold, and why.
 				emails.GET("/allowance", m.RequireOrganization(), m.RequireAccess(models.PermManageEmails, models.APIPermReadEmails), h.GetMailboxAllowance)
+				// Live warmup telemetry and queue status inspector.
+				emails.GET("/warmup-telemetry", m.RequireAccess(models.PermViewCampaigns, models.APIPermReadEmails), h.GetWarmupTelemetry)
 				emails.GET("/:id/track", m.RequireAccess(models.PermViewCampaigns, models.APIPermReadEmails), middleware.RequireAPIKeyEmailAccountParam("id"), h.GetEmailTrackingDomain)
 				emails.PATCH("/:id/track", m.RequireAccess(models.PermManageEmails, models.APIPermWriteEmails), middleware.RequireAPIKeyEmailAccountParam("id"), h.UpdateEmailTrackingDomain)
 				// Write-scoped like the auth-check refresh: persisting the
