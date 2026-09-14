@@ -206,22 +206,39 @@
       const activeEmails = emails.filter(e => e.status === 'active');
       if (activeEmails.length === 0) return;
 
-      // Deterministic round robin ordering based on mailbox count
+      // Deterministic pseudo-randomized jitter between 240s (4 min) and 480s (8 min) per mailbox
+      function getMailboxJitterSecs(emailStr, slotIndex) {
+        let hash = 0;
+        for (let i = 0; i < emailStr.length; i++) {
+          hash = (hash << 5) - hash + emailStr.charCodeAt(i);
+          hash |= 0;
+        }
+        const jitterVariance = Math.abs(hash + slotIndex * 77) % 240; // 0 to 240s (0 to 4 min)
+        return 240 + jitterVariance; // 240s to 480s (4.0 min to 8.0 min)
+      }
+
       const now = Math.floor(Date.now() / 1000);
-      const cycleDuration = 180; // 3 min standard cooldown
-      const currentSlot = Math.floor(now / cycleDuration) % activeEmails.length;
+      const currentJitter = getMailboxJitterSecs(activeEmails[0].email, Math.floor(now / 300));
+      const currentSlot = Math.floor(now / currentJitter) % activeEmails.length;
       const nextSlot = (currentSlot + 1) % activeEmails.length;
-      const elapsedInSlot = now % cycleDuration;
-      const remaining = cycleDuration - elapsedInSlot;
+      const elapsedInSlot = now % currentJitter;
+      const remaining = currentJitter - elapsedInSlot;
 
       const q = [];
+      let cumulative = remaining;
       for (let i = 0; i < Math.min(7, activeEmails.length); i++) {
         const idx = (currentSlot + i) % activeEmails.length;
+        const mail = activeEmails[idx];
+        const itemJitter = getMailboxJitterSecs(mail.email, idx);
         q.push({
-          email: activeEmails[idx].email,
-          remaining: i === 0 ? remaining : remaining + (i * cycleDuration)
+          email: mail.email,
+          remaining: i === 0 ? remaining : cumulative,
+          jitterMin: (itemJitter / 60).toFixed(1)
         });
+        if (i > 0) cumulative += itemJitter;
       }
+
+      const currentJitterMin = (currentJitter / 60).toFixed(1);
 
       warmupData = {
         isRunning: true,
@@ -229,9 +246,10 @@
         currentEmail: activeEmails[currentSlot].email,
         nextEmail: activeEmails[nextSlot].email,
         secondsRemaining: remaining,
-        totalCooldown: cycleDuration,
+        totalCooldown: currentJitter,
+        jitterMinText: `${currentJitterMin} min (Random 4-8m)`,
         replyRate: 35,
-        minDelay: 180,
+        minDelay: 240,
         window: "24/7 (00:00 - 23:59)",
         queue: q
       };
@@ -393,12 +411,15 @@
               </div>
               <div style="background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 8px 10px;">
                 <div style="font-size: 10px; color: #94a3b8;">Delay Interval</div>
-                <div style="font-size: 11.5px; font-weight: 700; color: #fbbf24; margin-top: 2px;">180s (3-6m)</div>
+                <div style="font-size: 11.5px; font-weight: 700; color: #fbbf24; margin-top: 2px;">4.0 - 8.0 min (Random)</div>
               </div>
               <div style="background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 8px 10px;">
                 <div style="font-size: 10px; color: #94a3b8;">Active Window</div>
                 <div style="font-size: 11.5px; font-weight: 700; color: #c084fc; margin-top: 2px;">24/7 Window</div>
               </div>
+            </div>
+            <div style="margin-top: 8px; padding: 7px 10px; border-radius: 6px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); font-size: 10.5px; color: #94a3b8; line-height: 1.4;">
+              <span style="color: #38bdf8; font-weight: 600;">Daily Cap Protection:</span> When a mailbox hits its daily target (e.g. 10/10), the Round Robin engine automatically skips it for the day and passes sending turns to remaining accounts.
             </div>
           </div>
 
