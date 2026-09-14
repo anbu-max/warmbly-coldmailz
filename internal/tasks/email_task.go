@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+	"github.com/warmbly/warmbly/internal/app/warmupramp"
 	"github.com/warmbly/warmbly/internal/config"
 	"github.com/warmbly/warmbly/internal/errx"
 	"github.com/warmbly/warmbly/internal/models"
@@ -197,6 +198,29 @@ func (s *tasksService) HandleEmailTask(task *proto.ProcessTask) *errx.Error {
 		if !canParticipate {
 			_ = s.taskRepo.UpdateTaskStatus(ctx, taskID, "skipped_warmup_protected")
 			s.scheduleWarmupRecovery(ctx, account.ID, poolType)
+			executionStatus = "completed"
+			return nil
+		}
+	}
+
+	// STEP 3.7: Strict Pre-Send Daily Volume Limit Check.
+	// If the mailbox has already sent its target volume of warmup emails for today (e.g. 10/10),
+	// DO NOT send an extra email. Skip this task, reschedule for tomorrow morning, and complete.
+	emailsSentToday, countErr := s.taskRepo.CountWarmupEmailsSentToday(ctx, account.ID)
+	if countErr == nil {
+		targetVol := s.resolveTargetVolume(ctx, account, activelyWarming, inCampaign)
+		if emailsSentToday >= targetVol {
+			log.Info().
+				Str("task_id", taskID.String()).
+				Str("email", account.Email).
+				Int("sent_today", emailsSentToday).
+				Int("target_volume", targetVol).
+				Msg("warmup send skipped: daily volume limit already reached for today")
+			_ = s.taskRepo.UpdateTaskStatus(ctx, taskID, "skipped_daily_limit")
+			nextSlot := calculateFirstSlotTomorrowAt(account.Timezone, account.WarmupStartTime)
+			if createErr := s.createWarmupTask(ctx, account.ID, nextSlot); createErr != nil {
+				log.Warn().Err(createErr).Str("email_account_id", account.ID.String()).Msg("failed to reschedule warmup task for tomorrow")
+			}
 			executionStatus = "completed"
 			return nil
 		}
@@ -445,6 +469,51 @@ func (s *tasksService) accountInActiveCampaign(ctx context.Context, accountID uu
 		return false
 	}
 	return count > 0
+}
+
+// resolveTargetVolume resolves today's exact warmup volume cap for the mailbox.
+func (s *tasksService) resolveTargetVolume(ctx context.Context, account *models.Email, activelyWarming, inCampaign bool) int {
+	base := account.WarmupBase
+	if base <= 0 {
+		base = 10
+	}
+	maxVol := account.WarmupMax
+	if maxVol <= 0 {
+		maxVol = 40
+	}
+	inc := account.WarmupIncrease
+	if inc <= 0 {
+		inc = 1
+	}
+
+	rampAnchor := time.Now()
+	if account.Warmup != nil {
+		rampAnchor = *account.Warmup
+	}
+
+	var healthState models.WarmupHealthState = models.WarmupHealthHealthy
+	if s.warmupRepo != nil {
+		if hs, _, err := s.warmupRepo.GetHealthState(ctx, account.ID); err == nil {
+			healthState = hs
+		}
+	}
+
+	plan := warmupramp.Resolve(ctx, s.warmupRepo, warmupramp.Input{
+		AccountID:       account.ID,
+		WarmupStart:     rampAnchor,
+		ActivelyWarming: activelyWarming,
+		Base:            base,
+		Increase:        inc,
+		Max:             maxVol,
+		InCampaign:      inCampaign,
+		Health:          healthState,
+		Now:             time.Now(),
+	})
+
+	if plan.Target > 0 {
+		return plan.Target
+	}
+	return base
 }
 
 // recentPartnerWindow controls how long a partner stays excluded from

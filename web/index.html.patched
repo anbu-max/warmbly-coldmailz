@@ -35,8 +35,8 @@
     </style>
     <script type="module" crossorigin src="/assets/index-bJvPQ16Z.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DimEQtT8.css">
-    <link rel="stylesheet" href="/dark-mode.css">
-    <script src="/dark-mode.js" defer></script>
+    <link rel="stylesheet" href="/dark-mode.css?v=20260914_2">
+    <script src="/dark-mode.js?v=20260914_2" defer></script>
   </head>
   <body>
     <div id="root"></div>

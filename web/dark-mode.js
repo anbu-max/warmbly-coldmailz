@@ -457,13 +457,31 @@
   function mountWarmupTelemetryButton() {
     if (document.getElementById('warmbly-warmup-telemetry-btn')) return;
 
-    // Look for the Section Bar (div containing 'Mailboxes' label and count)
-    const sectionBars = Array.from(document.querySelectorAll('div.min-h-9'));
-    const mailboxesBar = sectionBars.find(el => el.textContent.includes('Mailboxes') || el.textContent.includes('MAILBOXES'));
-    if (!mailboxesBar) return;
+    // 1. Direct Search Input anchor (most robust and reliable across all views)
+    const searchInput = document.querySelector('input[placeholder*="Search by email"]') ||
+                        document.querySelector('input[placeholder*="Search"]') ||
+                        document.querySelector('input[type="search"]');
 
-    // Find the right zone in Section Bar (where search and filters sit)
-    const rightZone = mailboxesBar.querySelector('.ml-auto') || mailboxesBar.lastElementChild;
+    let rightZone = null;
+    let refChild = null;
+
+    if (searchInput) {
+      const searchBoxContainer = searchInput.closest('div.h-7') || searchInput.parentElement;
+      if (searchBoxContainer && searchBoxContainer.parentElement) {
+        rightZone = searchBoxContainer.parentElement;
+        refChild = searchBoxContainer;
+      }
+    }
+
+    if (!rightZone) {
+      const sectionBars = Array.from(document.querySelectorAll('div.min-h-9, div[class*="min-h-9"]'));
+      const mailboxesBar = sectionBars.find(el => el.textContent.includes('Mailboxes') || el.textContent.includes('MAILBOXES'));
+      if (mailboxesBar) {
+        rightZone = mailboxesBar.querySelector('.ml-auto') || mailboxesBar.lastElementChild;
+        refChild = rightZone ? rightZone.firstChild : null;
+      }
+    }
+
     if (!rightZone) return;
 
     const btn = document.createElement('button');
@@ -471,21 +489,23 @@
     btn.type = 'button';
     btn.title = 'Inspect live warmup cooldown and round-robin queue';
     btn.style.cssText = `
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      height: 28px;
-      padding: 0 10px;
-      border-radius: 6px;
-      border: 1px solid rgba(245, 158, 11, 0.4);
-      background: rgba(245, 158, 11, 0.12);
-      color: #fbbf24;
-      font-size: 11.5px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-family: inherit;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      height: 28px !important;
+      padding: 0 10px !important;
+      margin-right: 6px !important;
+      border-radius: 6px !important;
+      border: 1px solid rgba(245, 158, 11, 0.4) !important;
+      background: rgba(245, 158, 11, 0.12) !important;
+      color: #fbbf24 !important;
+      font-size: 11.5px !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      transition: all 0.2s ease !important;
+      font-family: inherit !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+      z-index: 10 !important;
     `;
 
     btn.innerHTML = `
@@ -513,9 +533,8 @@
 
     btn.onclick = openWarmupInspector;
 
-    // Insert as the first element in the rightZone (before the search input)
-    if (rightZone.firstChild) {
-      rightZone.insertBefore(btn, rightZone.firstChild);
+    if (refChild) {
+      rightZone.insertBefore(btn, refChild);
     } else {
       rightZone.appendChild(btn);
     }
