@@ -193,18 +193,62 @@
       const token = localStorage.getItem('access_token');
       if (!token) return;
 
-      const res = await fetch('http://localhost:8080/v1/emails?limit=50', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // 1. Fetch live account statuses (which has exact current_volume & target_volume per mailbox)
+      let accounts = [];
+      try {
+        const accRes = await fetch('http://localhost:8080/v1/analytics/accounts', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (accRes.ok) {
+          const accData = await accRes.json();
+          accounts = Array.isArray(accData) ? accData : (accData?.data || []);
         }
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!data || !data.data || data.data.length === 0) return;
+      } catch (e) {}
 
-      const emails = data.data;
-      const activeEmails = emails.filter(e => e.status === 'active');
-      if (activeEmails.length === 0) return;
+      // If analytics/accounts empty, fallback to /v1/emails
+      if (!accounts || accounts.length === 0) {
+        const emailsRes = await fetch('http://localhost:8080/v1/emails?limit=50', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (emailsRes.ok) {
+          const emailsData = await emailsRes.json();
+          accounts = emailsData?.data || [];
+        }
+      }
+
+      if (!accounts || accounts.length === 0) return;
+
+      // Filter to ONLY actively warming accounts that HAVE NOT REACHED their daily limit
+      const eligibleAccounts = [];
+      let totalMailboxCount = accounts.length;
+      let completedCount = 0;
+
+      for (const acc of accounts) {
+        if (acc.status !== 'active') continue;
+        const ws = acc.warmup_status;
+        if (ws) {
+          if (!ws.enabled || ws.paused) continue;
+          const sent = ws.current_volume || 0;
+          const target = ws.target_volume || 10;
+          if (sent >= target) {
+            completedCount++;
+            continue; // STRICTLY SKIP: mailbox reached its daily limit for today!
+          }
+          eligibleAccounts.push({
+            email: acc.email,
+            sent: sent,
+            target: target,
+            remainingQuota: target - sent
+          });
+        } else if (acc.warmup && !acc.warmup_paused_at) {
+          eligibleAccounts.push({
+            email: acc.email,
+            sent: 0,
+            target: acc.warmup_base || 10,
+            remainingQuota: acc.warmup_base || 10
+          });
+        }
+      }
 
       // Deterministic pseudo-randomized jitter between 240s (4 min) and 480s (8 min) per mailbox
       function getMailboxJitterSecs(emailStr, slotIndex) {
@@ -218,20 +262,46 @@
       }
 
       const now = Math.floor(Date.now() / 1000);
-      const currentJitter = getMailboxJitterSecs(activeEmails[0].email, Math.floor(now / 300));
-      const currentSlot = Math.floor(now / currentJitter) % activeEmails.length;
-      const nextSlot = (currentSlot + 1) % activeEmails.length;
+
+      if (eligibleAccounts.length === 0) {
+        // All accounts completed today's target volume!
+        warmupData = {
+          isRunning: true,
+          allCompletedToday: true,
+          totalMailboxCount: totalMailboxCount,
+          completedCount: completedCount,
+          eligibleCount: 0,
+          distributionMode: "round_robin",
+          currentEmail: "All Active Mailboxes Completed Today's Limit (10/10)",
+          nextEmail: "Round Robin Resumes Tomorrow Morning (+1/day)",
+          secondsRemaining: 0,
+          totalCooldown: 240,
+          jitterMinText: "Paused Until Tomorrow",
+          replyRate: 35,
+          minDelay: 240,
+          window: "24/7 (00:00 - 23:59)",
+          queue: []
+        };
+        return;
+      }
+
+      const currentJitter = getMailboxJitterSecs(eligibleAccounts[0].email, Math.floor(now / 300));
+      const currentSlot = Math.floor(now / currentJitter) % eligibleAccounts.length;
+      const nextSlot = (currentSlot + 1) % eligibleAccounts.length;
       const elapsedInSlot = now % currentJitter;
       const remaining = currentJitter - elapsedInSlot;
 
       const q = [];
       let cumulative = remaining;
-      for (let i = 0; i < Math.min(7, activeEmails.length); i++) {
-        const idx = (currentSlot + i) % activeEmails.length;
-        const mail = activeEmails[idx];
+      for (let i = 0; i < Math.min(7, eligibleAccounts.length); i++) {
+        const idx = (currentSlot + i) % eligibleAccounts.length;
+        const mail = eligibleAccounts[idx];
         const itemJitter = getMailboxJitterSecs(mail.email, idx);
         q.push({
           email: mail.email,
+          sent: mail.sent,
+          target: mail.target,
+          remainingQuota: mail.remainingQuota,
           remaining: i === 0 ? remaining : cumulative,
           jitterMin: (itemJitter / 60).toFixed(1)
         });
@@ -242,9 +312,15 @@
 
       warmupData = {
         isRunning: true,
+        allCompletedToday: false,
+        totalMailboxCount: totalMailboxCount,
+        completedCount: completedCount,
+        eligibleCount: eligibleAccounts.length,
         distributionMode: "round_robin",
-        currentEmail: activeEmails[currentSlot].email,
-        nextEmail: activeEmails[nextSlot].email,
+        currentEmail: eligibleAccounts[currentSlot].email,
+        currentEmailQuota: `${eligibleAccounts[currentSlot].sent}/${eligibleAccounts[currentSlot].target}`,
+        nextEmail: eligibleAccounts[nextSlot].email,
+        nextEmailQuota: `${eligibleAccounts[nextSlot].sent}/${eligibleAccounts[nextSlot].target}`,
         secondsRemaining: remaining,
         totalCooldown: currentJitter,
         jitterMinText: `${currentJitterMin} min (Random 4-8m)`,
@@ -254,7 +330,7 @@
         queue: q
       };
     } catch (err) {
-      // Fallback to internal rotation
+      // Fallback
     }
   }
 
@@ -282,7 +358,11 @@
     if (!btn) return;
     const timeSpan = btn.querySelector('.warmup-time-text');
     if (timeSpan) {
-      timeSpan.textContent = warmupData.secondsRemaining > 0 ? formatSecs(warmupData.secondsRemaining) : "Active";
+      if (warmupData.allCompletedToday) {
+        timeSpan.textContent = "Done Today (10/10)";
+      } else {
+        timeSpan.textContent = warmupData.secondsRemaining > 0 ? formatSecs(warmupData.secondsRemaining) : "Active";
+      }
     }
   }
 
@@ -292,7 +372,9 @@
       modal.remove();
     }
 
-    const progressPercent = Math.min(100, Math.max(5, Math.round(((warmupData.totalCooldown - warmupData.secondsRemaining) / warmupData.totalCooldown) * 100)));
+    const progressPercent = warmupData.totalCooldown > 0 
+      ? Math.min(100, Math.max(5, Math.round(((warmupData.totalCooldown - warmupData.secondsRemaining) / warmupData.totalCooldown) * 100)))
+      : 100;
 
     modal = document.createElement('div');
     modal.id = 'warmbly-warmup-modal';
@@ -353,11 +435,14 @@
                   ⏳ 1. In Cooldown Now
                 </span>
                 <span style="font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; background: rgba(245, 158, 11, 0.25); color: #fde68a; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.4);">
-                  ${formatSecs(warmupData.secondsRemaining)} left
+                  ${warmupData.secondsRemaining > 0 ? formatSecs(warmupData.secondsRemaining) + ' left' : 'Active'}
                 </span>
               </div>
               <div>
-                <div style="font-size: 10.5px; color: #94a3b8; margin-bottom: 3px;">Mailing Account:</div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10.5px; color: #94a3b8; margin-bottom: 3px;">
+                  <span>Mailing Account:</span>
+                  ${warmupData.currentEmailQuota ? `<span style="font-family: monospace; font-weight: 600; color: #fbbf24; background: rgba(245,158,11,0.15); padding: 1px 5px; border-radius: 3px;">${warmupData.currentEmailQuota} Sent</span>` : ''}
+                </div>
                 <div style="font-family: ui-monospace, monospace; font-size: 12px; font-weight: 700; color: #fef08a; background: rgba(0, 0, 0, 0.4); padding: 7px 9px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.25); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                   ${warmupData.currentEmail}
                 </div>
@@ -384,13 +469,18 @@
                 </span>
               </div>
               <div>
-                <div style="font-size: 10.5px; color: #94a3b8; margin-bottom: 3px;">Next Mailbox (Round Robin):</div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10.5px; color: #94a3b8; margin-bottom: 3px;">
+                  <span>Next Mailbox (Round Robin):</span>
+                  ${warmupData.nextEmailQuota ? `<span style="font-family: monospace; font-weight: 600; color: #38bdf8; background: rgba(14,165,233,0.15); padding: 1px 5px; border-radius: 3px;">${warmupData.nextEmailQuota} Sent</span>` : ''}
+                </div>
                 <div style="font-family: ui-monospace, monospace; font-size: 12px; font-weight: 700; color: #e0f2fe; background: rgba(0, 0, 0, 0.4); padding: 7px 9px; border-radius: 6px; border: 1px solid rgba(14, 165, 233, 0.25); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                   ${warmupData.nextEmail}
                 </div>
               </div>
               <p style="font-size: 10.5px; color: #94a3b8; margin: 0; line-height: 1.4;">
-                Will automatically start mailing once <span style="color: #fbbf24; font-family: monospace;">${warmupData.currentEmail.split('@')[0]}</span> finishes cooldown.
+                ${warmupData.allCompletedToday 
+                  ? "All mailboxes reached daily limit. Auto-resumes tomorrow morning with incremented daily target." 
+                  : `Will automatically start mailing once <span style="color: #fbbf24; font-family: monospace;">${warmupData.currentEmail.split('@')[0]}</span> finishes cooldown.`}
               </p>
             </div>
           </div>
@@ -419,22 +509,27 @@
               </div>
             </div>
             <div style="margin-top: 8px; padding: 7px 10px; border-radius: 6px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); font-size: 10.5px; color: #94a3b8; line-height: 1.4;">
-              <span style="color: #38bdf8; font-weight: 600;">Daily Cap Protection:</span> When a mailbox hits its daily target (e.g. 10/10), the Round Robin engine automatically skips it for the day and passes sending turns to remaining accounts.
+              <span style="color: #38bdf8; font-weight: 600;">Daily Cap Protection:</span> When a mailbox hits its daily target (10/10 today, +1/day ramp), the Round Robin engine automatically skips it for the day and passes sending turns exclusively to remaining accounts.
             </div>
           </div>
 
           <!-- Upcoming Queue List -->
           <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 12px;">
             <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #94a3b8; font-weight: 600; margin-bottom: 8px;">
-              <span>Upcoming Round Robin Queue (22 Accounts)</span>
-              <span style="font-size: 10px; color: #64748b;">Staggered Order</span>
+              <span>Active Round Robin Queue (${warmupData.eligibleCount || warmupData.queue.length} Accounts with sends remaining)</span>
+              <span style="font-size: 10px; color: #64748b;">${warmupData.completedCount || 0} Mailboxes Completed Today</span>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 5px; max-height: 120px; overflow-y: auto;">
-              ${warmupData.queue.slice(2, 6).map((item, idx) => `
+            <div style="display: flex; flex-direction: column; gap: 5px; max-height: 140px; overflow-y: auto;">
+              ${warmupData.queue.length === 0 ? `
+                <div style="padding: 12px; text-align: center; color: #34d399; font-size: 11.5px; font-weight: 600; background: rgba(16, 185, 129, 0.1); border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                  🎉 All mailboxes reached their maximum daily warmup limit for today (10/10). Resuming tomorrow!
+                </div>
+              ` : warmupData.queue.slice(2, 7).map((item, idx) => `
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: 6px; background: rgba(2, 6, 23, 0.5); border: 1px solid rgba(30, 41, 59, 0.5); font-size: 11px;">
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-family: monospace; font-size: 10px; color: #64748b;">#${idx + 3}</span>
                     <span style="font-family: monospace; color: #e2e8f0;">${item.email}</span>
+                    <span style="font-family: monospace; font-size: 10px; color: #38bdf8; background: rgba(14, 165, 233, 0.15); padding: 1px 4px; border-radius: 3px;">${item.sent}/${item.target}</span>
                   </div>
                   <span style="font-family: monospace; color: #94a3b8; font-size: 10px;">${formatSecs(item.remaining)}</span>
                 </div>

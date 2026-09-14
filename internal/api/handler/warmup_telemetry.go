@@ -62,20 +62,25 @@ func (h *Handler) GetWarmupTelemetry(c *gin.Context) {
 
 	now := time.Now().UTC()
 
-	// 1. Fetch pending warmup tasks ordered by scheduled_at ASC
+	// 1. Fetch pending warmup tasks ordered by scheduled_at ASC, strictly excluding mailboxes that reached today's limit
 	tasksQuery := `
 		SELECT 
 			t.id, 
 			t.scheduled_at, 
 			ea.id as email_account_id, 
 			ea.email,
-			COALESCE(ea.min_wait_time, 180) as min_wait_time,
+			COALESCE(ea.min_wait_time, 240) as min_wait_time,
 			COALESCE(ea.warmup_reply_rate, 35) as warmup_reply_rate
 		FROM tasks t
 		JOIN email_accounts ea ON ea.id = t.email_account_id
+		LEFT JOIN warmup_statistics ws ON ws.email_account_id = ea.id AND ws.date = CURRENT_DATE
 		WHERE t.task_type = 'warmup'
 		  AND t.status = 'pending'
 		  AND ea.organization_id = $1
+		  AND ea.status = 'active'
+		  AND ea.warmup IS NOT NULL
+		  AND ea.warmup_paused_at IS NULL
+		  AND COALESCE(ws.emails_sent, 0) < COALESCE(ws.target_volume, ea.warmup_base, 10)
 		ORDER BY t.scheduled_at ASC
 		LIMIT 20;
 	`

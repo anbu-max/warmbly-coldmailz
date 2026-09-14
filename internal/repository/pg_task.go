@@ -128,6 +128,7 @@ type TaskRepository interface {
 	// Count only campaign tasks completed today (excludes warmup)
 	CountCampaignEmailsSentToday(ctx context.Context, accountID uuid.UUID) (int, error)
 	CountWarmupEmailsSentToday(ctx context.Context, accountID uuid.UUID) (int, error)
+	CancelPendingWarmupTasksForToday(ctx context.Context, accountID uuid.UUID) error
 
 	// Create user-initiated email task (transactional)
 	CreateEmailTaskFull(ctx context.Context, task *Task, emailTask *EmailTask) error
@@ -514,6 +515,19 @@ func (r *taskRepository) CountWarmupEmailsSentToday(ctx context.Context, account
 	var count int
 	err := r.db.QueryRow(ctx, query, accountID).Scan(&count)
 	return count, err
+}
+
+func (r *taskRepository) CancelPendingWarmupTasksForToday(ctx context.Context, accountID uuid.UUID) error {
+	query := `
+		UPDATE tasks
+		SET status = 'cancelled', updated_at = NOW()
+		WHERE email_account_id = $1
+		  AND task_type = 'warmup'
+		  AND status = 'pending'
+		  AND scheduled_at < (CURRENT_DATE + INTERVAL '1 day')
+	`
+	_, err := r.db.Exec(ctx, query, accountID)
+	return err
 }
 
 // GetLastEmailTime gets the last email send time for an account. It is the

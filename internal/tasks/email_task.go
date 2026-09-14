@@ -217,6 +217,7 @@ func (s *tasksService) HandleEmailTask(task *proto.ProcessTask) *errx.Error {
 				Int("target_volume", targetVol).
 				Msg("warmup send skipped: daily volume limit already reached for today")
 			_ = s.taskRepo.UpdateTaskStatus(ctx, taskID, "skipped_daily_limit")
+			_ = s.taskRepo.CancelPendingWarmupTasksForToday(ctx, account.ID)
 			nextSlot := calculateFirstSlotTomorrowAt(account.Timezone, account.WarmupStartTime)
 			if createErr := s.createWarmupTask(ctx, account.ID, nextSlot); createErr != nil {
 				log.Warn().Err(createErr).Str("email_account_id", account.ID.String()).Msg("failed to reschedule warmup task for tomorrow")
