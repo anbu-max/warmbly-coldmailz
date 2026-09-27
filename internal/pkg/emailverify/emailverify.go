@@ -87,9 +87,10 @@ const (
 
 // Provider names for Result.Provider and contacts.verification_provider.
 const (
-	ProviderBuiltin         = "builtin"
-	ProviderMillionVerifier = "millionverifier"
-	ProviderCleanMyList     = "cleanmylist"
+	ProviderBuiltin            = "builtin"
+	ProviderMillionVerifier    = "millionverifier"
+	ProviderCleanMyList        = "cleanmylist"
+	ProviderCheckIfEmailExists = "check_if_email_exists"
 )
 
 // Result is the outcome of verifying one address. It round-trips into the

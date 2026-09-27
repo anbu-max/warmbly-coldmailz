@@ -16,6 +16,13 @@ type ExternalVerdict struct {
 // vocabularies maps a provider name to the statuses it emits. Keys are
 // lower-cased with spaces, dashes and underscores removed (see vocabKey).
 var vocabularies = map[string]map[string]ExternalVerdict{
+	ProviderCheckIfEmailExists: {
+		"safe":    {Status: StatusValid},
+		"valid":   {Status: StatusValid},
+		"risky":   {Status: StatusRisky},
+		"invalid": {Status: StatusInvalid},
+		"unknown": {Status: StatusUnknown},
+	},
 	ProviderCleanMyList: {
 		"deliverable":   {Status: StatusValid},
 		"undeliverable": {Status: StatusInvalid},

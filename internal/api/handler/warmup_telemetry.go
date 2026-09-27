@@ -62,7 +62,7 @@ func (h *Handler) GetWarmupTelemetry(c *gin.Context) {
 
 	now := time.Now().UTC()
 
-	// 1. Fetch pending warmup tasks ordered by scheduled_at ASC, strictly excluding mailboxes that reached today's limit
+	// 1. Fetch pending warmup tasks ordered by scheduled_at ASC, strictly excluding mailboxes that reached today's limit or have health blocks
 	tasksQuery := `
 		SELECT 
 			t.id, 
@@ -74,13 +74,20 @@ func (h *Handler) GetWarmupTelemetry(c *gin.Context) {
 		FROM tasks t
 		JOIN email_accounts ea ON ea.id = t.email_account_id
 		LEFT JOIN warmup_statistics ws ON ws.email_account_id = ea.id AND ws.date = CURRENT_DATE
+		LEFT JOIN warmup_pool_participants wpp ON wpp.email_account_id = ea.id
 		WHERE t.task_type = 'warmup'
 		  AND t.status = 'pending'
 		  AND ea.organization_id = $1
 		  AND ea.status = 'active'
 		  AND ea.warmup IS NOT NULL
 		  AND ea.warmup_paused_at IS NULL
-		  AND COALESCE(ws.emails_sent, 0) < COALESCE(ws.target_volume, ea.warmup_base, 10)
+		  AND (wpp.health_state IS NULL OR wpp.health_state IN ('healthy', 'watch', 'throttled'))
+		  AND (wpp.blocked_until IS NULL OR wpp.blocked_until <= NOW())
+		  AND GREATEST(
+				COALESCE(ws.emails_sent, 0),
+				(SELECT COUNT(*) FROM unibox_emails ue WHERE ue.email_id = ea.id AND LOWER(COALESCE(ue.folder, '')) = 'sent' AND (DATE(ue.created_at) = CURRENT_DATE OR DATE(ue.sent_date) = CURRENT_DATE OR DATE(ue.internal_date) = CURRENT_DATE)),
+				(SELECT COUNT(*) FROM tasks t2 WHERE t2.email_account_id = ea.id AND t2.task_type = 'warmup' AND t2.status = 'completed' AND DATE(t2.updated_at) = CURRENT_DATE)
+		  ) < COALESCE(ws.target_volume, ea.warmup_base, 10)
 		ORDER BY t.scheduled_at ASC
 		LIMIT 20;
 	`
@@ -140,7 +147,11 @@ func (h *Handler) GetWarmupTelemetry(c *gin.Context) {
 			ea.warmup_paused_at,
 			COALESCE(ea.min_wait_time, 180) as min_wait_time,
 			COALESCE(ea.warmup_reply_rate, 35) as warmup_reply_rate,
-			COALESCE(ws.emails_sent, 0) as emails_sent,
+			GREATEST(
+				COALESCE(ws.emails_sent, 0),
+				(SELECT COUNT(*) FROM unibox_emails ue WHERE ue.email_id = ea.id AND LOWER(COALESCE(ue.folder, '')) = 'sent' AND (DATE(ue.created_at) = CURRENT_DATE OR DATE(ue.sent_date) = CURRENT_DATE OR DATE(ue.internal_date) = CURRENT_DATE)),
+				(SELECT COUNT(*) FROM tasks t WHERE t.email_account_id = ea.id AND t.task_type = 'warmup' AND t.status = 'completed' AND DATE(t.updated_at) = CURRENT_DATE)
+			) as emails_sent,
 			COALESCE(ws.emails_replied, 0) as emails_replied,
 			COALESCE(ws.target_volume, ea.warmup_max, 10) as target_volume
 		FROM email_accounts ea

@@ -212,6 +212,7 @@ x-selfhost-env: &selfhost-env
   EMAIL_VERIFY_HELO_HOST: ${EMAIL_VERIFY_HELO_HOST:-}
   EMAIL_VERIFY_MAIL_FROM: ${EMAIL_VERIFY_MAIL_FROM:-}
   EMAIL_VERIFY_MILLIONVERIFIER_API_KEY: ${EMAIL_VERIFY_MILLIONVERIFIER_API_KEY:-}
+  EMAIL_VERIFY_VALIDATOR_URL: ${EMAIL_VERIFY_VALIDATOR_URL:-http://email-validator:8080}
 
   SEARCH_PROVIDER: ${SEARCH_PROVIDER:-}
   SEARCH_API_URL: ${SEARCH_API_URL:-}
@@ -325,6 +326,21 @@ services:
       timeout: 3s
       retries: 10
 
+  # Pre-send email verification (check-if-email-exists / reacher)
+  email-validator:
+    restart: unless-stopped
+    image: reacherhq/backend:latest
+    ports: ["${EMAIL_VALIDATOR_PORT:-8085}:8080"]
+    environment:
+      RUST_LOG: reacher=info
+      RCH__HTTP_HOST: 0.0.0.0
+      RCH__WORKER__ENABLE: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/ || exit 0"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   # ─── application ──────────────────────────────────────────────────────
 
   backend:
@@ -398,6 +414,7 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       nats: { condition: service_healthy }
+      email-validator: { condition: service_started }
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 10s

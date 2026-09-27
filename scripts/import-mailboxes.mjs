@@ -26,73 +26,123 @@ const ACCOUNTS = [
   },
   {
     email: "tony.atomixdigital@gmail.com",
-    name: "Tony Atomix",
+    name: "Tony",
     password: "pawfxxaxniengvjj",
   },
   {
     email: "anbu.fromdigital@gmail.com",
-    name: "Anbu From Digital",
+    name: "Anbu",
     password: "bnjdiycyjnrvxfse",
   },
   {
     email: "anbu.foundrr@gmail.com",
-    name: "Anbu Foundrr",
+    name: "Anbu",
     password: "nwrleskoszpznwca",
   },
   {
     email: "anbu.atomixdigital@gmail.com",
-    name: "Anbu Atomix Digital",
+    name: "Anbu",
     password: "wtlwfkoijwfgelod",
   },
   {
     email: "andrewgrowthze@gmail.com",
-    name: "Andrew Growthze",
+    name: "Andrew",
     password: "itvavtlzpyweefwb",
   },
   {
     email: "anbu.founderz@gmail.com",
-    name: "Anbu Founderz",
+    name: "Anbu",
     password: "qmvecubgplsvjays",
   },
   {
     email: "contact.alexforgrowth@gmail.com",
-    name: "Alex Growth",
+    name: "Alex",
     password: "vjptglqzpxnmyell",
   },
   {
     email: "anbuselvan32520@gmail.com",
-    name: "Anbuselvan 32520",
+    name: "Anbu",
     password: "yylpfeojrbbomczn",
   },
   {
     email: "anbuselvan.atomix@gmail.com",
-    name: "Anbuselvan Atomix",
+    name: "Anbu",
     password: "mkuupglhughfkmzk",
   },
   {
     email: "s63400391@gmail.com",
-    name: "S63400391",
+    name: "Pablo",
     password: "spikeprgooenspxx",
   },
   {
     email: "marcusroaaz@gmail.com",
-    name: "Marcus Roaaz",
+    name: "Marcus",
     password: "prvfeqjixyoxbcrr",
   },
   {
     email: "kevinzdigital@gmail.com",
-    name: "Kevin Digital",
+    name: "Kevin Johnson",
     password: "ugocpwswxfkkdewm",
   },
   {
     email: "1.ngopi2659@gmail.com",
-    name: "Ngopi 1",
+    name: "Anya gopi",
     password: "ibhtqveynxdzbbos",
   },
   {
     email: "ngopi2659@gmail.com",
-    name: "Ngopi",
+    name: "Gopi",
     password: "zitmxidgpiyepgne",
+  },
+  {
+    email: "gowthamad45@gmail.com",
+    name: "Gwen gowtham",
+    password: "zrhreqqdrgtlebqz",
+  },
+  {
+    email: "sankerad113@gmail.com",
+    name: "Shyam johnson",
+    password: "gicasodkpxoqhzeg",
+  },
+  {
+    email: "lilaautomation@gmail.com",
+    name: "Lila",
+    password: "wsfkjbwwqlimkyqw",
+  },
+  {
+    email: "jackrockerzai@gmail.com",
+    name: "Jack",
+    password: "gkcgauevyargsycf",
+  },
+  {
+    email: "rajuaisolutions@gmail.com",
+    name: "Ramya",
+    password: "zchasvwxmmkvpggl",
+  },
+  {
+    email: "marcusdigitalls47@gmail.com",
+    name: "Marcus",
+    password: "galmvjuykgjktacc",
+  },
+  {
+    email: "shankssolutiions@gmail.com",
+    name: "Shakira",
+    password: "rnpznakqvfqgcnxw",
+  },
+  {
+    email: "sarahjohnsonsrjn@gmail.com",
+    name: "Sarah Johnson",
+    password: "oqdinesxzgdbajge",
+  },
+  {
+    email: "samukthazx@gmail.com",
+    name: "Samuktha",
+    password: "oxcnziouhtlwyief",
+  },
+  {
+    email: "ayeshayaszx@gmail.com",
+    name: "Ayesha",
+    password: "srwnvxytmqrbbzkh",
   },
 ];
 
@@ -135,7 +185,7 @@ async function importMailboxes() {
         headers["Authorization"] = `Bearer ${TOKEN}`;
       }
 
-      const res = await fetch(`${API_BASE}/emails/onboarding/smtp-imap`, {
+      const res = await fetch(`${API_BASE}/v1/emails/onboarding/smtp-imap`, {
         method: "POST",
         headers,
         body: JSON.stringify(payload),

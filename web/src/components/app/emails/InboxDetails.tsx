@@ -648,7 +648,7 @@ function OverviewTab({ status, loading, mailbox }: { status?: import("@/lib/api/
                 />
                 <StatCard label="Warmup today" value={ws ? ws.current_volume : (usage?.warmup_sent ?? "—")} sub={ws ? `target ${ws.target_volume}` : undefined} accent />
                 <StatCard label="Reply rate" value={ws ? `${ws.reply_rate}%` : "—"} sub="warmup replies" />
-                <StatCard label="Days warming" value={ws ? ws.days_active : "—"} sub={ws ? `max ${ws.max_volume}/day` : undefined} />
+                <StatCard label="Days warming" value={ws ? (ws.days_active === 0 ? "Day 1" : `${ws.days_active} days`) : "—"} sub={ws ? `max ${ws.max_volume}/day` : undefined} />
             </div>
 
             {ws?.ramp_hold && <RampHoldNotice hold={ws.ramp_hold} />}

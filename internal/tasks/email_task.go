@@ -14,6 +14,7 @@ import (
 	"github.com/warmbly/warmbly/internal/errx"
 	"github.com/warmbly/warmbly/internal/models"
 	"github.com/warmbly/warmbly/internal/observability/errs"
+	"github.com/warmbly/warmbly/internal/pkg/emailverify"
 	"github.com/warmbly/warmbly/internal/repository"
 	"github.com/warmbly/warmbly/internal/tasks/proto"
 )
@@ -713,6 +714,17 @@ func (s *tasksService) selectWarmupPartner(ctx context.Context, account Email) (
 		partner, err := s.emailRepo.GetByID(ctx, partnerID)
 		if err != nil {
 			return nil, err
+		}
+		if s.emailVerifier != nil {
+			res := s.emailVerifier.Verify(ctx, partner.Email)
+			if res.Status == emailverify.StatusInvalid {
+				log.Warn().
+					Str("partner_email", partner.Email).
+					Str("reason", res.Reason).
+					Msg("Warmup partner failed pre-send email verification; skipping partner to prevent bounce")
+				availablePartners = removePartnerID(availablePartners, partnerID)
+				continue
+			}
 		}
 		return partner, nil
 	}

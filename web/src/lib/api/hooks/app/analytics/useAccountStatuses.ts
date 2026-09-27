@@ -5,5 +5,7 @@ export default function useAccountStatuses() {
     return useQuery({
         queryKey: ["analytics", "accounts", "list"],
         queryFn: () => getAccountStatuses(),
+        refetchInterval: 5000,
+        staleTime: 3000,
     })
 }

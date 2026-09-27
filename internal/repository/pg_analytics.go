@@ -344,7 +344,11 @@ func (r *analyticsRepository) GetAccountDailyUsage(ctx context.Context, accountI
 			$2::date::text as date,
 			COALESCE(dec.count, 0) as campaign_sent,
 			COALESCE(ea.campaign_limit, 50) as campaign_limit,
-			COALESCE(ws.emails_sent, 0) as warmup_sent,
+			GREATEST(
+				COALESCE(ws.emails_sent, 0),
+				(SELECT COUNT(*) FROM unibox_emails ue WHERE ue.email_id = ea.id AND LOWER(COALESCE(ue.folder, '')) = 'sent' AND (DATE(ue.created_at) = $2::date OR DATE(ue.sent_date) = $2::date OR DATE(ue.internal_date) = $2::date)),
+				(SELECT COUNT(*) FROM tasks t WHERE t.email_account_id = ea.id AND t.task_type = 'warmup' AND t.status = 'completed' AND DATE(t.updated_at) = $2::date)
+			) as warmup_sent,
 			COALESCE(ea.warmup_max, 0) as warmup_limit
 		FROM email_accounts ea
 		LEFT JOIN daily_email_counts dec ON dec.email_account_id = ea.id AND dec.date = $2::date

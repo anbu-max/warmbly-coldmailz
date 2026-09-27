@@ -1698,18 +1698,32 @@ func main() {
 		go warmupBatchPoller.Start(ctx)
 
 		// Pre-send verification runs here, never on a worker (a sending IP).
-		// The HELO host must be a public FQDN or the probe declines to run.
-		emailVerifier := emailverify.New(emailverify.Config{
-			HeloHost: emailVerifyHeloHost(),               // e.g. verify.warmbly.com
-			MailFrom: os.Getenv("EMAIL_VERIFY_MAIL_FROM"), // e.g. verify@warmbly.com
-		})
+		// When EMAIL_VERIFY_VALIDATOR_URL is configured (e.g. check-if-email-exists),
+		// use it as the built-in verifier; otherwise use the in-house SMTP RCPT prober.
+		var emailVerifier emailverify.Verifier
+		var builtinReady bool
+		if validatorURL := os.Getenv("EMAIL_VERIFY_VALIDATOR_URL"); validatorURL != "" {
+			emailVerifier = emailverify.NewCheckIfEmailExists(validatorURL)
+			builtinReady = true
+		} else {
+			inHouse := emailverify.New(emailverify.Config{
+				HeloHost: emailVerifyHeloHost(),               // e.g. verify.warmbly.com
+				MailFrom: os.Getenv("EMAIL_VERIFY_MAIL_FROM"), // e.g. verify@warmbly.com
+			})
+			emailVerifier = inHouse
+			builtinReady = inHouse.ProbeReady()
+		}
+
 		// Org key first, operator key second, built-in check last.
 		emailVerifyService = emailverifyapp.NewService(contactRepostory, emailverifyapp.Options{
 			Builtin:                    emailVerifier,
-			BuiltinReady:               emailVerifier.ProbeReady(),
+			BuiltinReady:               builtinReady,
 			Providers:                  integrationServiceForHandler,
 			PlatformMillionVerifierKey: os.Getenv("EMAIL_VERIFY_MILLIONVERIFIER_API_KEY"),
 		})
+		if tasksService != nil && emailVerifier != nil {
+			tasksService.SetEmailVerifier(emailVerifier)
+		}
 		verificationEvidence := emailverifyapp.NewEvidence(repository.NewVerificationEvidenceRepository(primaryDB))
 		emailVerifyService.SetEvidence(verificationEvidence)
 		if aware, ok := contactService.(contact.VerificationAware); ok {

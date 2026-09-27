@@ -55,14 +55,14 @@ export default function WarmupTelemetryButton() {
         return () => clearInterval(interval);
     }, [localSeconds]);
 
-    const isRunning = telemetry?.is_running ?? true;
-    const currentEmail = telemetry?.current_cooldown?.email ?? "Calculating queue...";
-    const nextEmail = telemetry?.next_in_line?.email ?? (telemetry?.queue?.[1]?.email ?? "Queue advancing...");
+    const isRunning = Boolean(telemetry?.is_running && telemetry?.current_cooldown);
+    const hasActiveTask = Boolean(telemetry?.current_cooldown);
+    const currentEmail = telemetry?.current_cooldown?.email ?? "No active task in cooldown";
+    const nextEmail = telemetry?.next_in_line?.email ?? (telemetry?.queue?.[1]?.email ?? "No scheduled mailbox");
     const totalCooldown = telemetry?.current_cooldown?.total_cooldown_seconds ?? 180;
-    const progressPercent = Math.min(
-        100,
-        Math.max(5, Math.round(((totalCooldown - localSeconds) / totalCooldown) * 100))
-    );
+    const progressPercent = hasActiveTask && totalCooldown > 0
+        ? Math.min(100, Math.max(5, Math.round(((totalCooldown - localSeconds) / totalCooldown) * 100)))
+        : 100;
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -70,18 +70,26 @@ export default function WarmupTelemetryButton() {
                 <button
                     type="button"
                     title="Inspect live warmup cooldown and round-robin queue"
-                    className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[11.5px] font-medium transition-all shadow-xs shrink-0 cursor-pointer"
+                    className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-[11.5px] font-medium transition-all shadow-xs shrink-0 cursor-pointer ${
+                        isRunning && localSeconds > 0
+                            ? "border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400"
+                            : "border-slate-700 bg-slate-800/40 hover:bg-slate-800 text-slate-300"
+                    }`}
                 >
-                    <span className="relative flex size-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full size-2 bg-amber-500"></span>
-                    </span>
-                    <FlameIcon className="size-3 text-amber-400" />
+                    {isRunning && localSeconds > 0 ? (
+                        <span className="relative flex size-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full size-2 bg-amber-500"></span>
+                        </span>
+                    ) : (
+                        <span className="size-2 rounded-full bg-slate-500" />
+                    )}
+                    <FlameIcon className={`size-3 ${isRunning && localSeconds > 0 ? "text-amber-400" : "text-slate-400"}`} />
                     <span className="hidden sm:inline">Warmup:</span>
-                    <span className="font-mono tabular-nums text-amber-300 font-semibold">
-                        {localSeconds > 0 ? `${formatSeconds(localSeconds)}` : "Active"}
+                    <span className={`font-mono tabular-nums font-semibold ${isRunning && localSeconds > 0 ? "text-amber-300" : "text-slate-300"}`}>
+                        {isRunning && localSeconds > 0 ? `${formatSeconds(localSeconds)}` : (isRunning ? "Dispatching" : "Idle")}
                     </span>
-                    <InfoIcon className="size-3 ml-0.5 text-amber-400/80 hover:text-amber-300" />
+                    <InfoIcon className="size-3 ml-0.5 text-slate-400 hover:text-slate-200" />
                 </button>
             </DialogTrigger>
 
@@ -89,7 +97,7 @@ export default function WarmupTelemetryButton() {
                 <DialogHeader className="space-y-1.5 pb-3 border-b border-slate-800/80">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <div className="size-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                            <div className={`size-8 rounded-lg border flex items-center justify-center ${isRunning ? "bg-amber-500/15 border-amber-500/30 text-amber-400" : "bg-slate-800/60 border-slate-700 text-slate-400"}`}>
                                 <FlameIcon className="size-4.5" />
                             </div>
                             <div>
@@ -110,8 +118,12 @@ export default function WarmupTelemetryButton() {
                             >
                                 <RefreshCwIcon className="size-3.5" />
                             </button>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                                isRunning 
+                                    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" 
+                                    : "bg-slate-800 text-slate-400 border-slate-700"
+                            }`}>
+                                <span className={`size-1.5 rounded-full ${isRunning ? "bg-emerald-400 animate-pulse" : "bg-slate-400"}`} />
                                 {isRunning ? "Running" : "Idle"}
                             </span>
                         </div>
@@ -129,7 +141,9 @@ export default function WarmupTelemetryButton() {
                                     <span>1. Currently In Cooldown</span>
                                 </div>
                                 <span className="font-mono text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
-                                    {localSeconds > 0 ? `Sends in ${formatSeconds(localSeconds)}` : "Dispatching now"}
+                                    {hasActiveTask 
+                                        ? (localSeconds > 0 ? `Sends in ${formatSeconds(localSeconds)}` : "Dispatching now")
+                                        : "Idle / No Active Task"}
                                 </span>
                             </div>
 

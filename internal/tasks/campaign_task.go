@@ -15,6 +15,7 @@ import (
 	"github.com/warmbly/warmbly/internal/infrastructure/pubsub"
 	"github.com/warmbly/warmbly/internal/models"
 	"github.com/warmbly/warmbly/internal/observability/errs"
+	"github.com/warmbly/warmbly/internal/pkg/emailverify"
 	"github.com/warmbly/warmbly/internal/pkg/mailhtml"
 	"github.com/warmbly/warmbly/internal/repository"
 	"github.com/warmbly/warmbly/internal/scheduler"
@@ -336,6 +337,16 @@ func (s *tasksService) HandleCampaignTask(task *proto.ProcessTask) *errx.Error {
 			_ = s.createCampaignTask(ctx, campaign.ID, accountID, nextTime)
 			executionStatus = "completed"
 			return nil
+		}
+	}
+
+	// Pre-send verification gate: verify unverified addresses on the fly
+	if s.emailVerifier != nil && (contact.VerificationStatus == "unknown" || contact.VerificationStatus == "") {
+		res := s.emailVerifier.Verify(ctx, contact.Email)
+		if res.Status != "" {
+			contact.VerificationStatus = string(res.Status)
+			contact.VerificationReason = res.Reason
+			_ = s.contactRepo.UpdateContactVerification(ctx, contact.ID, res)
 		}
 	}
 

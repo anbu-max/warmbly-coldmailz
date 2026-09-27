@@ -16,6 +16,7 @@ import (
 	"github.com/warmbly/warmbly/internal/events"
 	"github.com/warmbly/warmbly/internal/infrastructure/pubsub"
 	"github.com/warmbly/warmbly/internal/models"
+	"github.com/warmbly/warmbly/internal/pkg/emailverify"
 	"github.com/warmbly/warmbly/internal/pkg/generation"
 	"github.com/warmbly/warmbly/internal/repository"
 	"github.com/warmbly/warmbly/internal/scheduler"
@@ -92,6 +93,9 @@ type TasksService interface {
 	// SetFormLinks wires the minter that resolves {{form_link:...}} markers
 	// into per-recipient form URLs. Nil-safe: markers drop with a warning.
 	SetFormLinks(m FormLinkMinter)
+
+	// SetEmailVerifier wires pre-send email verification for warmup and campaigns.
+	SetEmailVerifier(v emailverify.Verifier)
 }
 
 // CloudLinkReader reports whether Warmbly Cloud warms a mailbox.
@@ -176,6 +180,14 @@ type tasksService struct {
 	// disabled means no link can be minted: the List-Unsubscribe header is
 	// left off and link-mode footers fall back to the text line.
 	unsubLinks *unsublink.Signer
+
+	// emailVerifier verifies recipient emails before sending to prevent hard bounces.
+	emailVerifier emailverify.Verifier
+}
+
+// SetEmailVerifier wires the pre-send verifier.
+func (s *tasksService) SetEmailVerifier(v emailverify.Verifier) {
+	s.emailVerifier = v
 }
 
 // SetUnsubscribeLinks wires the unsubscribe link signer.
