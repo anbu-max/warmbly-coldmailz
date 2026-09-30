@@ -818,7 +818,7 @@ func (r *contactRepository) UndeliverableLeadIDs(ctx context.Context, orgID, cam
 		JOIN contacts c ON c.id = cl.contact_id
 		JOIN campaigns cp ON cp.id = cl.campaign_id
 		WHERE cl.campaign_id = $1 AND cp.organization_id = $2
-		  AND (c.verification_status = 'invalid' OR (c.verification_status = 'risky' AND NOT cp.risky_emails))
+		  AND (c.verification_status != 'valid' AND (c.verification_status != 'risky' OR NOT cp.risky_emails))
 	`
 	params := []any{campaignID, orgID}
 	rows, err := r.DB.Query(ctx, query, params...)

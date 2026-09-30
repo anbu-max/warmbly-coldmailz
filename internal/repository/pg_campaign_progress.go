@@ -983,8 +983,8 @@ func (r *campaignProgressRepository) GetLatestCampaignSequenceForContact(ctx con
 // contacts as `c`.
 func undeliverableClause(cp string) string {
 	return fmt.Sprintf(
-		"(c.verification_status = 'invalid' OR (c.verification_status = 'risky' "+
-			"AND NOT COALESCE((SELECT rc.risky_emails FROM campaigns rc WHERE rc.id = %[1]s), true)))",
+		"(c.verification_status != 'valid' AND (c.verification_status != 'risky' "+
+			"OR NOT COALESCE((SELECT rc.risky_emails FROM campaigns rc WHERE rc.id = %[1]s), false)))",
 		cp,
 	)
 }
