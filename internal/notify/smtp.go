@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/smtp"
+	"os"
 	"strings"
 	"time"
 
@@ -224,9 +225,16 @@ func (s *smtpEmailNotificationService) ehloName() string {
 		return s.cfg.EHLOName
 	}
 	// Announce the sender domain rather than net/smtp's "localhost", which
-	// relays treat as a spam signal.
+	// relays treat as a spam signal, unless the domain is a public provider or relay.
 	if at := strings.LastIndex(s.Address, "@"); at >= 0 && at+1 < len(s.Address) {
-		return s.Address[at+1:]
+		domain := strings.ToLower(s.Address[at+1:])
+		h := strings.ToLower(s.cfg.Host)
+		if !wsmtp.IsPublicWebmailDomain(domain) && domain != h && !strings.HasSuffix(h, "."+domain) {
+			return domain
+		}
+	}
+	if hostName, err := os.Hostname(); err == nil && hostName != "" && !wsmtp.IsPublicWebmailDomain(hostName) {
+		return hostName
 	}
 	return ""
 }

@@ -22,8 +22,13 @@ func (s *service) RecordInboundBounce(ctx context.Context, emailAccountID uuid.U
 
 	task, err := s.taskRepo.GetTaskByMessageID(ctx, originalMessageID)
 	if err != nil || task == nil {
-		// Unknown message id (warmup mail, non-campaign send, or already
-		// pruned) — nothing to attribute the bounce to.
+		// Unknown message id (non-campaign send or already pruned) — nothing to attribute the bounce to.
+		return nil
+	}
+
+	// Warmup sends are internal pool traffic, not campaign outreach to leads.
+	// A warmup bounce must NEVER suppress an organization mailbox or pollute campaign bounce tracking.
+	if task.TaskType != models.TaskTypeCampaign {
 		return nil
 	}
 
@@ -79,6 +84,9 @@ func (s *service) RecordInboundComplaint(ctx context.Context, emailAccountID uui
 	task, err := s.taskRepo.GetTaskByMessageID(ctx, originalMessageID)
 	if err != nil || task == nil {
 		// Warmup mail, a non-campaign send, or already pruned.
+		return nil
+	}
+	if task.TaskType != models.TaskTypeCampaign {
 		return nil
 	}
 	if task.EmailAccountID != emailAccountID {

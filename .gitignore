@@ -110,3 +110,7 @@ build-errors.log
 xcuserdata/
 .DS_Store
 /.worktrees/
+
+# Local leads and data files
+zleads/
+*.csv

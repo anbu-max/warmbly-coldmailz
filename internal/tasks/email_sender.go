@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	wsmtp "github.com/warmbly/warmbly/internal/client/smtpimap/smtp"
 	"github.com/warmbly/warmbly/internal/events"
 	"github.com/warmbly/warmbly/internal/models"
 	"github.com/warmbly/warmbly/internal/repository"
@@ -145,16 +147,22 @@ func (s *emailSender) Send(ctx context.Context, taskID uuid.UUID, msg EmailMessa
 	return nil
 }
 
-// generateMessageID generates a unique Message-ID header
+// generateMessageID generates a unique Message-ID header.
+// When sending from a public webmail domain like gmail.com or outlook.com,
+// claiming the provider's domain in a client-minted Message-ID is treated by
+// anti-abuse systems as forgery. We use a neutral instance host instead.
 func generateMessageID(fromEmail string) string {
-	// Extract domain from email
 	parts := strings.Split(fromEmail, "@")
-	domain := "localhost"
+	domain := "warmbly.local"
 	if len(parts) == 2 {
-		domain = parts[1]
+		d := strings.ToLower(strings.TrimSpace(parts[1]))
+		if !wsmtp.IsPublicWebmailDomain(d) && d != "" {
+			domain = d
+		} else if ehlo := os.Getenv("SMTP_EHLO_NAME"); ehlo != "" {
+			domain = strings.TrimSpace(ehlo)
+		}
 	}
 
-	// Generate unique ID
 	return fmt.Sprintf("<%s@%s>", uuid.New().String(), domain)
 }
 

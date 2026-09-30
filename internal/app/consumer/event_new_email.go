@@ -14,6 +14,7 @@ import (
 	"github.com/warmbly/warmbly/internal/config"
 	"github.com/warmbly/warmbly/internal/infrastructure/pubsub"
 	"github.com/warmbly/warmbly/internal/models"
+	"github.com/warmbly/warmbly/internal/pkg/dsn"
 )
 
 func (s *JobsService) HandleNewEmail(ctx context.Context, e *models.JobEventNewEmail) error {
@@ -48,6 +49,14 @@ func (s *JobsService) HandleNewEmail(ctx context.Context, e *models.JobEventNewE
 		if handled {
 			return nil // Don't add to unibox
 		}
+		// A message carrying a warmup verify token is warmup traffic, never ordinary
+		// customer mail. Even if the token expired or was from an external peer pool,
+		// it must never be filed into the user's Unibox.
+		log.Debug().
+			Str("email_account_id", e.Message.EmailID.String()).
+			Str("token", warmupToken).
+			Msg("dropping unrecognized or expired warmup token mail from unibox")
+		return nil
 	} else if s.handleUnmarkedWarmupEmail(ctx, e) {
 		// Warmup whose verify header did not survive delivery. Every Microsoft
 		// mailbox sends this way, so without this branch its warmup mail is
@@ -57,6 +66,22 @@ func (s *JobsService) HandleNewEmail(ctx context.Context, e *models.JobEventNewE
 		// The same message, in a mailbox Warmbly Cloud warms: the token lives
 		// there, so only the cloud can recognise it.
 		return nil
+	}
+
+	// Filter out delivery-status notifications (bounces) belonging to warmup sends.
+	from := strings.Join(e.Message.FromAddr, " ")
+	if dsn.Detect(from, e.Message.Subject, extractHeaderValue(e.Message, "Content-Type")) {
+		report := dsn.Parse(e.Message.BodyText + "\n" + e.Message.Snippet)
+		origID := report.OriginalMessageID
+		if origID == "" && len(e.Message.InReplyTo) > 0 {
+			origID = strings.Trim(e.Message.InReplyTo[len(e.Message.InReplyTo)-1], "<>")
+		}
+		if origID != "" && s.TaskRepo != nil {
+			if task, terr := s.TaskRepo.GetTaskByMessageID(ctx, strings.Trim(origID, "<>")); terr == nil && task != nil && task.TaskType != models.TaskTypeCampaign {
+				log.Info().Str("original_message_id", origID).Msg("dropping warmup bounce notification from unibox")
+				return nil
+			}
+		}
 	}
 
 	// A pool-linked mailbox is warmup-only: everything else is dropped unread.

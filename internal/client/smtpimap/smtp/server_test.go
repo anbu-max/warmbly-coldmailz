@@ -256,7 +256,7 @@ func TestSendWithoutAuthExtension(t *testing.T) {
 	}
 }
 
-// The sender's own domain goes in EHLO. net/smtp says "localhost" when left
+// The sender's own domain goes in EHLO when legitimate. net/smtp says "localhost" when left
 // alone, which relays read as a spam signal.
 func TestEHLOAnnouncesTheSenderDomain(t *testing.T) {
 	srv := newFakeServer(t, "LOGIN")
@@ -266,6 +266,19 @@ func TestEHLOAnnouncesTheSenderDomain(t *testing.T) {
 	_ = c.sendRaw(t.Context(), "sender@warmbly.test", []string{"to@example.test"}, []byte("Subject: hi\r\n\r\nbody\r\n"))
 	if !srv.sawPrefix("EHLO warmbly.test") {
 		t.Errorf("EHLO did not announce the sender domain: %v", srv.seen)
+	}
+}
+
+// Public webmail domains (like gmail.com) must NEVER be announced in EHLO as it triggers
+// anti-spoofing and domain forgery rejections (e.g. 5.7.1 Message rejected).
+func TestEHLODoesNotAnnouncePublicWebmailDomain(t *testing.T) {
+	srv := newFakeServer(t, "LOGIN")
+	host, port := srv.addr()
+	c := newTestClient(host, port)
+
+	_ = c.sendRaw(t.Context(), "sender@gmail.com", []string{"to@example.test"}, []byte("Subject: hi\r\n\r\nbody\r\n"))
+	if srv.sawPrefix("EHLO gmail.com") {
+		t.Errorf("EHLO announced public webmail domain: %v", srv.seen)
 	}
 }
 

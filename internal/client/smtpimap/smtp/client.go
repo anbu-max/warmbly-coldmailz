@@ -15,6 +15,7 @@ import (
 	"net/mail"
 	"net/smtp"
 	"net/textproto"
+	"os"
 	"strings"
 	"time"
 
@@ -31,12 +32,62 @@ import (
 // stops answering cannot hold a send goroutine forever.
 const sendTimeout = 90 * time.Second
 
-// ehloName is the domain to announce in EHLO, taken from the sender's own
-// address. Empty leaves net/smtp's default in place.
-func ehloName(address string) string {
-	if at := strings.LastIndex(address, "@"); at >= 0 && at+1 < len(address) {
-		return address[at+1:]
+// publicWebmailDomains are hosted consumer webmail domains that an SMTP client
+// must NEVER announce in EHLO when connecting from an arbitrary client IP.
+// Claiming to be "gmail.com" when connecting to smtp.gmail.com is flagged as
+// HELO domain forgery by Google's anti-spoofing filters (5.7.1 Message rejected).
+var publicWebmailDomains = map[string]struct{}{
+	"gmail.com":      {},
+	"googlemail.com": {},
+	"google.com":     {},
+	"yahoo.com":      {},
+	"ymail.com":      {},
+	"rocketmail.com": {},
+	"outlook.com":    {},
+	"hotmail.com":    {},
+	"live.com":       {},
+	"msn.com":        {},
+	"icloud.com":     {},
+	"me.com":         {},
+	"mac.com":        {},
+	"aol.com":        {},
+	"zoho.com":       {},
+	"proton.me":      {},
+	"protonmail.com": {},
+	"fastmail.com":   {},
+}
+
+func IsPublicWebmailDomain(domain string) bool {
+	_, ok := publicWebmailDomains[strings.ToLower(strings.TrimSpace(domain))]
+	return ok
+}
+
+// ehloName is the domain to announce in EHLO.
+// When an explicit SMTP_EHLO_NAME is configured, it is always preferred.
+// If the sender's domain is a public webmail domain (like gmail.com) or matches
+// the relay host, announcing that domain in EHLO is domain spoofing; in that case
+// we announce the local host or fallback rather than impersonating the mail provider.
+func ehloName(address, host string) string {
+	if configured := os.Getenv("SMTP_EHLO_NAME"); configured != "" {
+		return strings.TrimSpace(configured)
 	}
+
+	var domain string
+	if at := strings.LastIndex(address, "@"); at >= 0 && at+1 < len(address) {
+		domain = strings.ToLower(address[at+1:])
+	}
+
+	h := strings.ToLower(host)
+	isRelay := domain != "" && (domain == h || strings.HasSuffix(h, "."+domain))
+
+	if domain != "" && !IsPublicWebmailDomain(domain) && !isRelay {
+		return domain
+	}
+
+	if hostName, err := os.Hostname(); err == nil && hostName != "" && !IsPublicWebmailDomain(hostName) {
+		return hostName
+	}
+
 	return ""
 }
 
@@ -307,9 +358,8 @@ func (c *Client) sendRaw(ctx context.Context, from string, to []string, data []b
 	}
 	defer client.Quit()
 
-	// Announce the sender's own domain. net/smtp says "localhost" when left
-	// alone, which relays read as a spam signal.
-	if name := ehloName(c.Email); name != "" {
+	// Announce the sender's own domain when legitimate, or configured/host EHLO.
+	if name := ehloName(c.Email, host); name != "" {
 		if err := client.Hello(name); err != nil {
 			return errx.ErrMailServerUnreachable
 		}
